@@ -22,14 +22,19 @@ while connectionAttempt < 3:
         print("Compte bloqué ! Trop de tentatives de connexion ont été faites. Contacter votre conseiller bancaire.")
 
 # Utilisateur peut retirer un maximum de EUR 200 par jour ou le maximum de son solde si c'est moins que 200 EUR :
+# L'utilisateur a le choix de pouvoir selectionner ce qui veut retirer en therme de billet à la ligne 36
+stockNumberToWithdraw = 0.0
 while True:
-    choiceOfUser = input("Pour retirer, tapper 1.\nPour générer un reçu avec vos 5 dernières transactions, "
-                         "tapper 2.\nPour partir, tapper 3 ")
+    choiceOfUser = input("Pour retirer, tapper 1:\nPour générer un reçu avec vos 5 dernières transactions, "
+                         "tapper 2:\nPour partir, tapper 3: ")
     if choiceOfUser == "1":
         numberToWithdraw = float(input("Rentrer le montant que vous souhaiter retirer : "))
-        if numberToWithdraw > 200:
+        stockNumberToWithdraw += numberToWithdraw
+        if stockNumberToWithdraw > 200:
             print("Impossible de retier plus de 200€ par jour !")
         else:
+            quantityOfBill = int(input("Tapper 1 si vous souhaitez avoir le moins de billet possible:\n"
+                                       "Tapper 2 si vous souhaitez avoir le plus de billet possible:"))
             accountBalanceRounded = accountBalanceRounded - numberToWithdraw
             print(
                 "Vous venez de retier " + str(numberToWithdraw) + "€ avec succès.\n Voici votre nouveau solde : " + str(
