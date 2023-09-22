@@ -5,6 +5,7 @@ pinCode = "1207"
 connectionAttempt = 0
 accountBalance = random.uniform(1.0, 10000.0)
 accountBalanceRounded = round(accountBalance, 2)
+historyOfTheTransaction = []
 
 while connectionAttempt < 3:
     userName = input("Entrer votre nom d'utilisateur : ")
@@ -39,8 +40,14 @@ while True:
             print(
                 "Vous venez de retier " + str(numberToWithdraw) + "€ avec succès.\n Voici votre nouveau solde : " + str(
                     accountBalanceRounded))
-    elif choiceOfUser == "2":
-        print("Voici vos dernières opération")
+            historyOfTheTransaction.append(numberToWithdraw)
+    elif choiceOfUser == "2" and stockNumberToWithdraw != 0:
+        print("Voici vos dernières opération.\nIl faut savoir que le maximum de l'historique est de 5 opération: ")
+        for i, transaction in enumerate(historyOfTheTransaction[-5:]):
+            i = i + 1
+            print("Transaction " + str(i) + " : " + str(transaction) + " €")
+    elif choiceOfUser == "2" and stockNumberToWithdraw == 0:
+        print("Vous ne possédez aucune transaction. Il est donc impossible de sortir un historique.")
     elif choiceOfUser == "3":
-        print("Merci beacoup pour votre fidélité, XEFI vous souhaite une bonne journée !")
+        print("Merci beacoup pour votre fidélité, XEFIBank vous souhaite une bonne journée !")
         break
