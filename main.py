@@ -1,4 +1,5 @@
 import random
+import datetime
 
 # Variables
 name = "BENHARRAT"
@@ -66,7 +67,8 @@ def Withdrawal():
                                                 "solde"
                                                 ": " +
                         str(accountBalanceRounded) + "€")
-                    historyOfTheTransaction.append(numberToWithdraw)
+                    currentDate = datetime.datetime.now()
+                    historyOfTheTransaction.append((currentDate.strftime("%Y-%m-%d %H:%M:%S"), numberToWithdraw))
                     numberOfWithdrawals += 1
                     break
                 else:
@@ -82,9 +84,12 @@ def TransactionsHistory():
     else:
         print("Voici vos dernières opération.\nIl faut savoir que le maximum de l'historique est de 5 opérations : "
               )
-        for i, transaction in enumerate(historyOfTheTransaction[-5:]):
-            i = i + 1
-            print("Transaction " + str(i) + " : " + str(transaction) + "€")
+        for dateOfTransaction, amountOfTransaction, in historyOfTheTransaction[-5:]:
+            dateOfTransactionReformed = datetime.datetime.strptime(dateOfTransaction, "%Y-%m-%d %H:%M:%S").strftime(
+                "%d/%m/%Y %H:%M:%S")
+
+            print("Le " + str(dateOfTransactionReformed) + " ,Vous avez retirer " +
+                  str(amountOfTransaction) + "€")
 
 
 # Fonction qui permet à l'utilisateur de choisir le retrait, l'historique ou bien de partir
