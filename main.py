@@ -49,30 +49,61 @@ def Withdrawal():
         if numberOfWithdrawals > 5:
             print("Vous ne pouvez retirer plus de 5 fois par jour.")
             break
-        inputAmount = input("Rentrez le montant que vous souhaiter retirer : ")
+        inputAmount = input(f"Rentrez le montant que vous souhaitez retirer. Sachant que vous pouvez retirer maximum "
+                            f"{200 - stockNumberToWithdraw:.2f}€ encore aujourd'hui: ")
+
         numberToWithdraw = TryFloat(inputAmount)
         if numberToWithdraw > 0:
             if stockNumberToWithdraw + numberToWithdraw > 200:
                 print("Impossible de retirer plus de 200€ par jour !")
                 break
+            elif numberToWithdraw % 10 != 0:
+                print("Montant invalide, il est impossible de retirer un nombre qui n'est pas un entier ou qui ne se "
+                      "termine pas par 0 ou 5.")
+            elif numberToWithdraw == 10:
+                print("Impossible de retirer 10 euros, le distributeur ne propose pas de billets de 5 euros.")
             else:
                 stockNumberToWithdraw += numberToWithdraw
-                quantityOfBill = int(input("Tapper 1 si vous souhaitez avoir le moins de billet possible\n"
-                                           "Tapper 2 si vous souhaitez avoir le plus de billet possible : "))
-                if quantityOfBill == 1 or quantityOfBill == 2:
-                    accountBalanceRounded = accountBalanceRounded - numberToWithdraw
-                    print(
-                        "Vous venez de retirer " + str(
-                            numberToWithdraw) + "€ avec succès.\nVoici votre nouveau "
-                                                "solde"
-                                                ": " +
-                        str(accountBalanceRounded) + "€")
-                    currentDate = datetime.datetime.now()
-                    historyOfTheTransaction.append((currentDate.strftime("%Y-%m-%d %H:%M:%S"), numberToWithdraw))
-                    numberOfWithdrawals += 1
-                    break
+                accountBalanceRounded = accountBalanceRounded - numberToWithdraw
+                accountBalanceRounded = round(accountBalanceRounded, 2)
+
+                quantityOfBill = int(input("Tapper 1 si vous souhaitez avoir le plus de billet possible\n"
+                                           "Tapper 2 si vous souhaitez avoir le moins de billet possible : "))
+                if quantityOfBill == 1:
+                    BankNoteOfTen = numberToWithdraw // 10
+                    RemainingAmount = numberToWithdraw % 10
+                    if RemainingAmount > 0:
+                        print(f"Vous avez reçu " + str(BankNoteOfTen) + " billets de 10 euros.")
+                        print(f"Et {RemainingAmount:.2f}€ en espèces.")
+                    else:
+                        print(f"Vous avez reçu " + str(BankNoteOfTen) + " billets de 10 euros.")
+                elif quantityOfBill == 2:
+                    BankNoteOfFifty = numberToWithdraw // 50
+                    RemainingAmount = numberToWithdraw % 50
+                    if RemainingAmount > 0:
+                        BankNoteOfTwenty = RemainingAmount // 20
+                        RemainingAmount %= 20
+                        BankNoteOfTen = RemainingAmount // 10
+                        RemainingAmount %= 10
+                        print(
+                            "Vous avez reçu " + str(BankNoteOfFifty) + " billet(s) de 50 "
+                                                                       "euros, " + str(
+                                BankNoteOfTwenty) + " billet(s) de 20 euros "
+                                                    "et " + str(BankNoteOfTen) + " billet(s) de 10 euros.")
+                        if RemainingAmount > 0:
+                            print(f"Et {RemainingAmount:.2f}€ en espèces.")
+                    else:
+                        print("Vous avez reçu " + str(BankNoteOfFifty) + " billet(s) de 50 euros.")
                 else:
                     print("S'il vous plaît, entrer une option comprise entre 1 et 2. ")
+
+                print(f'Vous venez de retirer {numberToWithdraw:.2f}€ avec succès.\nVoici votre nouveau solde: '
+                      f'{accountBalanceRounded:.2f}€. vous pouvez retirer maximum '
+                      f'{200 - stockNumberToWithdraw:.2f}€ encore aujourd\'hui.')
+                currentDate = datetime.datetime.now()
+                historyOfTheTransaction.append((currentDate.strftime("%Y-%m-%d %H:%M:%S"), numberToWithdraw))
+                numberOfWithdrawals += 1
+                break
         else:
             print("Le montant que vous avez rentrer est invalide.")
 
@@ -87,9 +118,9 @@ def TransactionsHistory():
         for dateOfTransaction, amountOfTransaction, in historyOfTheTransaction[-5:]:
             dateOfTransactionReformed = datetime.datetime.strptime(dateOfTransaction, "%Y-%m-%d %H:%M:%S").strftime(
                 "%d/%m/%Y %H:%M:%S")
-
+            amountOfTransactionFormatted = "{:.2f}".format(amountOfTransaction)
             print("Le " + str(dateOfTransactionReformed) + " ,Vous avez retirer " +
-                  str(amountOfTransaction) + "€")
+                  amountOfTransactionFormatted + "€")
 
 
 # Fonction qui permet à l'utilisateur de choisir le retrait, l'historique ou bien de partir
