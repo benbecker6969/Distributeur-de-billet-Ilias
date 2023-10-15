@@ -1,19 +1,23 @@
-import random
 import datetime
+import sqlite3
+import hashlib
 
 # Variables
-name = "BENHARRAT"
-pinCode = "1207"
 connectionAttempt = 0
-accountBalance = random.uniform(1.0, 10000.0)
-accountBalanceRounded: float = round(accountBalance, 2)
+accountBalanceRounded = 0.0
 historyOfTheTransaction = []
 accountBlocked = False
 numberOfWithdrawals = 0
 stockNumberToWithdraw = 0.0
+username = ""
+dailyWithdrawalLimit = 0.0
+
+# Connection à ma BDD
+conn = sqlite3.connect("xefibank.db")
+cursor = conn.cursor()
 
 
-# Fonction gestion d'erreur pour l'entrée du nombre à retirer
+# Fonction de conversion en float: gestion d'erreur
 def TryFloat(value):
     try:
         return float(value)
@@ -21,62 +25,115 @@ def TryFloat(value):
         return 0.0
 
 
-# Fonction de la connexion de l'utilisateur
+# Fonction de connexion de l'utilisateur
 def UserConnection():
-    global connectionAttempt, accountBlocked
+    global connectionAttempt, accountBlocked, accountBalanceRounded, username, dailyWithdrawalLimit
+
     while connectionAttempt < 3:
-        userName = input("Entrer votre nom d'utilisateur : ")
-        writePinCode = input("Entrer votre Code Pin : ")
+        username = input("Entrez votre nom d'utilisateur : ")
+        pincode = input("Entrez votre Code Pin : ")
 
-        if userName == name and writePinCode == pinCode:
-            print("Votre authentification est valide ! Bonjour " + name + " !\nVotre solde est de " + str(
-                accountBalanceRounded) + "€.")
-            break
-        else:
-            print("Votre nom d'authentification ou bien votre mot de passe est incorrect.")
-            connectionAttempt += 1
+        with sqlite3.connect("xefibank.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
+            user = cursor.fetchone()
 
-        if connectionAttempt == 3:
-            print(
-                "Compte bloqué ! Trop de tentatives de connexion ont été faites. Contacter votre conseiller bancaire.")
-            accountBlocked = True
+            if user:
+                stored_password_hash = user[2]
+                input_password_hash = hashlib.sha256(pincode.encode()).hexdigest()
+
+                if input_password_hash == stored_password_hash:
+                    accountBalanceRounded = user[6]
+                    dailyWithdrawalLimit = user[4]
+
+                    cursor.execute("SELECT date('now')")
+                    current_date = cursor.fetchone()[0]
+                    last_transaction_date = user[5]
+
+                    print("Authentification réussie ! Bonjour " + username + " !\nSolde : " + str(
+                        accountBalanceRounded) + "€.")
+                    break
+                else:
+                    print("Nom d'utilisateur ou mot de passe incorrect.")
+                    connectionAttempt += 1
+            else:
+                print("Nom d'utilisateur non trouvé. Veuillez entrer un nom d'utilisateur valide.")
+
+    if not accountBalanceRounded:
+        with sqlite3.connect("xefibank.db") as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT balance, daily_withdrawal_limit FROM users WHERE username = ?", (username,))
+            user = cursor.fetchone()
+            if user:
+                accountBalanceRounded = user[0]
+                dailyWithdrawalLimit = user[1]
 
 
 # Fonction qui permet de retirer
 def Withdrawal():
-    global accountBalanceRounded, numberOfWithdrawals, stockNumberToWithdraw
+    global accountBalanceRounded, numberOfWithdrawals, stockNumberToWithdraw, dailyWithdrawalLimit, username
+
     while True:
-        if numberOfWithdrawals > 5:
-            print("Vous ne pouvez retirer plus de 5 fois par jour.")
+        if numberOfWithdrawals >= 5:
+            print("Vous avez atteint la limite quotidienne de retraits (5 retraits par jour).")
             break
+
+        if stockNumberToWithdraw is None:
+            stockNumberToWithdraw = 0
+
+        if stockNumberToWithdraw >= dailyWithdrawalLimit:
+            print("Impossible,vous avez déjà retirer 200 € aujourd'hui.")
+            break
+
         inputAmount = input(f"Rentrez le montant que vous souhaitez retirer. Sachant que vous pouvez retirer maximum "
-                            f"{200 - stockNumberToWithdraw:.2f}€ encore aujourd'hui: ")
+                            f"{dailyWithdrawalLimit - stockNumberToWithdraw:.2f}€ encore aujourd'hui: ")
 
         numberToWithdraw = TryFloat(inputAmount)
         if numberToWithdraw > 0:
-            if stockNumberToWithdraw + numberToWithdraw > 200:
-                print("Impossible de retirer plus de 200€ par jour !")
-                break
+            if stockNumberToWithdraw + numberToWithdraw > dailyWithdrawalLimit:
+                print("Montant invalide, vous ne pouvez pas retirer plus que votre limite quotidienne.")
             elif numberToWithdraw % 10 != 0:
                 print("Montant invalide, il est impossible de retirer un nombre qui n'est pas un entier ou qui ne se "
                       "termine pas par 0 ou 5.")
             elif numberToWithdraw == 10:
                 print("Impossible de retirer 10 euros, le distributeur ne propose pas de billets de 5 euros.")
             else:
+                # Ajoute plus 1 à chaque retrait dans ma BDD
+                cursor.execute("SELECT daily_withdrawal_count FROM users WHERE username = ?", (username,))
+                current_count = cursor.fetchone()[0]
+
+                if current_count >= 5:
+                    print("Vous avez atteint la limite quotidienne de retraits (5 retraits par jour).")
+                    break
+
+                # Ajoute +1 à daily_withdrawal_count dans mon main.py
+                new_count = current_count + 1
                 stockNumberToWithdraw += numberToWithdraw
+                remaining_limit = dailyWithdrawalLimit - stockNumberToWithdraw
+
                 accountBalanceRounded = accountBalanceRounded - numberToWithdraw
                 accountBalanceRounded = round(accountBalanceRounded, 2)
 
-                quantityOfBill = int(input("Tapper 1 si vous souhaitez avoir le plus de billet possible\n"
-                                           "Tapper 2 si vous souhaitez avoir le moins de billet possible : "))
+                cursor.execute("UPDATE users SET balance = ?, daily_withdrawal_limit = ?, daily_withdrawal_count = ? "
+                               "WHERE username = ?",
+                               (accountBalanceRounded, remaining_limit, new_count, username))
+                conn.commit()
+
+                currentDate = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                cursor.execute("INSERT INTO transactions (user_id, date, amount) VALUES ((SELECT id FROM users WHERE "
+                               "username = ?), ?, ?)", (username, currentDate, numberToWithdraw))
+                conn.commit()
+
+                quantityOfBill = int(input("Tapez 1 si vous souhaitez avoir le plus de billets possible\nTapez 2 si "
+                                           "vous souhaitez avoir le moins de billets possible : "))
                 if quantityOfBill == 1:
                     BankNoteOfTen = numberToWithdraw // 10
                     RemainingAmount = numberToWithdraw % 10
                     if RemainingAmount > 0:
-                        print(f"Vous avez reçu " + str(BankNoteOfTen) + " billets de 10 euros.")
+                        print(f"Vous avez reçu " + str(int(BankNoteOfTen)) + " billets de 10 euros.")
                         print(f"Et {RemainingAmount:.2f}€ en espèces.")
                     else:
-                        print(f"Vous avez reçu " + str(BankNoteOfTen) + " billets de 10 euros.")
+                        print(f"Vous avez reçu " + str(int(BankNoteOfTen)) + " billets de 10 euros.")
                 elif quantityOfBill == 2:
                     BankNoteOfFifty = numberToWithdraw // 50
                     RemainingAmount = numberToWithdraw % 50
@@ -85,50 +142,50 @@ def Withdrawal():
                         RemainingAmount %= 20
                         BankNoteOfTen = RemainingAmount // 10
                         RemainingAmount %= 10
-                        print(
-                            "Vous avez reçu " + str(BankNoteOfFifty) + " billet(s) de 50 "
-                                                                       "euros, " + str(
-                                BankNoteOfTwenty) + " billet(s) de 20 euros "
-                                                    "et " + str(BankNoteOfTen) + " billet(s) de 10 euros.")
+                        print("Vous avez reçu " + str(int(BankNoteOfFifty)) + " billet(s) de 50 euros, " + str(
+                            int(BankNoteOfTwenty)) + " billet(s) de 20 euros " + "et " + str(
+                            int(BankNoteOfTen)) + " billet(s) de 10 euros.")
                         if RemainingAmount > 0:
                             print(f"Et {RemainingAmount:.2f}€ en espèces.")
-                    else:
-                        print("Vous avez reçu " + str(BankNoteOfFifty) + " billet(s) de 50 euros.")
-                else:
-                    print("S'il vous plaît, entrer une option comprise entre 1 et 2. ")
 
-                print(f'Vous venez de retirer {numberToWithdraw:.2f}€ avec succès.\nVoici votre nouveau solde: '
-                      f'{accountBalanceRounded:.2f}€. vous pouvez retirer maximum '
-                      f'{200 - stockNumberToWithdraw:.2f}€ encore aujourd\'hui.')
-                currentDate = datetime.datetime.now()
-                historyOfTheTransaction.append((currentDate.strftime("%Y-%m-%d %H:%M:%S"), numberToWithdraw))
+                print(
+                    f'Vous venez de retirer {numberToWithdraw:.2f}€ avec succès.\nVoici votre nouveau solde: {accountBalanceRounded:.2f}€. vous pouvez retirer maximum {dailyWithdrawalLimit - stockNumberToWithdraw:.2f}€ encore aujourd\'hui.')
+                historyOfTheTransaction.append((currentDate, numberToWithdraw))
                 numberOfWithdrawals += 1
                 break
         else:
-            print("Le montant que vous avez rentrer est invalide.")
+            print("Le montant que vous avez rentré est invalide.")
 
 
 # Fonction qui affiche les 5 dernières transactions de l'utilisateur
 def TransactionsHistory():
-    if not historyOfTheTransaction:
+    cursor.execute("SELECT date, amount FROM transactions WHERE user_id = (SELECT id FROM users WHERE username = ?) "
+                   "ORDER BY date DESC LIMIT 5", (username,))
+    user_transactions = cursor.fetchall()
+    if not user_transactions:
         print("Vous ne possédez aucune transaction. Il est donc impossible de sortir un historique.")
     else:
-        print("Voici vos dernières opération.\nIl faut savoir que le maximum de l'historique est de 5 opérations : "
-              )
-        for dateOfTransaction, amountOfTransaction, in historyOfTheTransaction[-5:]:
+        print("Voici vos dernières opérations. Le maximum que l'historique peut afficher est de 5 opérations : ")
+        for dateOfTransaction, amountOfTransaction in user_transactions:
             dateOfTransactionReformed = datetime.datetime.strptime(dateOfTransaction, "%Y-%m-%d %H:%M:%S").strftime(
                 "%d/%m/%Y %H:%M:%S")
             amountOfTransactionFormatted = "{:.2f}".format(amountOfTransaction)
-            print("Le " + str(dateOfTransactionReformed) + " ,Vous avez retirer " +
-                  amountOfTransactionFormatted + "€")
+            print("Le " + str(dateOfTransactionReformed) + " ,Vous avez retiré " + amountOfTransactionFormatted + "€.")
 
 
 # Fonction qui permet à l'utilisateur de choisir le retrait, l'historique ou bien de partir
 def UserChoice():
     global stockNumberToWithdraw
     while True:
-        choiceOfUser = input("Pour retirer, tapper 1\nPour générer un reçu avec vos 5 dernières transactions, tapper 2"
-                             "\nPour partir, tapper 3 : ")
+        cursor.execute("SELECT daily_withdrawal_count FROM users WHERE username = ?", (username,))
+        current_count = cursor.fetchone()[0]
+
+        remaining_withdrawals = 5 - current_count
+
+        choiceOfUser = input(
+            f"Vous avez encore {remaining_withdrawals} retrait(s) disponible(s) aujourd'hui.\nPour retirer, tapez "
+            f"1\nPour générer un reçu avec vos 5 dernières transactions, tapez 2\nPour partir, tapez 3 : ")
+
         if choiceOfUser == "1":
             Withdrawal()
         elif choiceOfUser == "2":
@@ -137,12 +194,13 @@ def UserChoice():
             print("Merci beaucoup pour votre fidélité, XEFIBank vous souhaite une bonne journée !")
             break
         else:
-            print("S'il vous plaît, entrer une option comprise entre 1 et 3.")
+            print("S'il vous plaît, entrez une option comprise entre 1 et 3.")
 
 
-# Je rappel mes fonctions dans une boucle qui permet de bloqué l'utilisateur en cas de 3 essaie de connexion
+# Je rappelle mes fonctions dans une boucle qui permet de bloquer l'utilisateur en cas de 3 essais de connexion
 while not accountBlocked:
     UserConnection()
     if accountBlocked:
         break
     UserChoice()
+conn.close()
