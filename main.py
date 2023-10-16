@@ -61,8 +61,7 @@ def UserConnection():
                     current_date = cursor.fetchone()[0]
                     last_transaction_date = user[5]
 
-                    print("Authentification réussie ! Bonjour " + username + " !\nSolde : " + str(
-                        accountBalanceRounded) + "€.")
+                    print("Authentification réussie ! Bonjour {} !\nSolde : {:.2f}€.".format(username, accountBalanceRounded))
                     break
             else:
                 print("Nom d'utilisateur ou mot de passe incorrect.")
