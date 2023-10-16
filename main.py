@@ -1,6 +1,10 @@
 import datetime
 import sqlite3
 import hashlib
+import locale
+from dateutil.parser import parse
+
+locale.setlocale(locale.LC_TIME, "fr_FR.utf8")
 
 # Variables
 connectionAttempt = 0
@@ -15,6 +19,13 @@ dailyWithdrawalLimit = 0.0
 # Connection à ma BDD
 conn = sqlite3.connect("xefibank.db")
 cursor = conn.cursor()
+
+current_datetime = datetime.datetime.now()
+
+if current_datetime.time() == datetime.time(0, 0, 0):
+    # Nombre de retrait et montant de retrait à 0 au bout de 00H00 dans ma BDD
+    cursor.execute("UPDATE users SET daily_withdrawal_count = 0, daily_withdrawal_limit = 200.0")
+    conn.commit()
 
 
 # Fonction de conversion en float: gestion d'erreur
@@ -53,11 +64,17 @@ def UserConnection():
                     print("Authentification réussie ! Bonjour " + username + " !\nSolde : " + str(
                         accountBalanceRounded) + "€.")
                     break
-                else:
-                    print("Nom d'utilisateur ou mot de passe incorrect.")
-                    connectionAttempt += 1
             else:
-                print("Nom d'utilisateur non trouvé. Veuillez entrer un nom d'utilisateur valide.")
+                print("Nom d'utilisateur ou mot de passe incorrect.")
+                connectionAttempt += 1
+                if connectionAttempt >= 3:
+                    print(
+                        "Le distributeur a été bloqué en raison d'un nombre excessif de tentatives de connexion "
+                        "infructueuses.\n"
+                        "Un message automatique a été envoyé à un conseiller qui arrivera"
+                        " dans un délai maximal de 5 minutes pour débloquer le distributeur.")
+                    accountBlocked = True
+                    break
 
     if not accountBalanceRounded:
         with sqlite3.connect("xefibank.db") as conn:
@@ -167,10 +184,10 @@ def TransactionsHistory():
     else:
         print("Voici vos dernières opérations. Le maximum que l'historique peut afficher est de 5 opérations : ")
         for dateOfTransaction, amountOfTransaction in user_transactions:
-            dateOfTransactionReformed = datetime.datetime.strptime(dateOfTransaction, "%Y-%m-%d %H:%M:%S").strftime(
-                "%d/%m/%Y %H:%M:%S")
+            dateOfTransactionParsed = parse(dateOfTransaction)
+            dateOfTransactionFormatted = dateOfTransactionParsed.strftime("%d/%m/%Y %H:%M:%S")
             amountOfTransactionFormatted = "{:.2f}".format(amountOfTransaction)
-            print("Le " + str(dateOfTransactionReformed) + " ,Vous avez retiré " + amountOfTransactionFormatted + "€.")
+            print("Le " + str(dateOfTransactionFormatted) + " ,Vous avez retiré " + amountOfTransactionFormatted + "€.")
 
 
 # Fonction qui permet à l'utilisateur de choisir le retrait, l'historique ou bien de partir
@@ -190,6 +207,7 @@ def UserChoice():
             Withdrawal()
         elif choiceOfUser == "2":
             TransactionsHistory()
+            locale.setlocale(locale.LC_TIME, "")
         elif choiceOfUser == "3":
             print("Merci beaucoup pour votre fidélité, XEFIBank vous souhaite une bonne journée !")
             break
