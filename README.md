@@ -1,35 +1,56 @@
-# Gestionnaire de Compte Bancaire
+# XEFIBank - Documentation
 
-Ce gestionnaire de compte bancaire est un programme Python simple conçu pour permettre aux utilisateurs de gérer leurs comptes, effectuer des retraits et consulter leur historique de transactions. Le code est prévu pour être utilisé en ligne de commande.
+Bienvenue dans la documentation de XEFIBank, une application bancaire simple pour gérer vos transactions et effectuer des retraits. Ce document explique les différentes parties de l'application et comment les utiliser.
 
-## Utilisation
+## Composants de XEFIBank
 
-1. Au démarrage, le programme invite l'utilisateur à s'authentifier en entrant son nom d'utilisateur et son code PIN. Par défaut, le nom d'utilisateur est "BENHARRAT" et le code PIN est "1207". L'utilisateur dispose de trois tentatives pour s'authentifier correctement.
+1. **main.py**
+   Le fichier main.py est le cœur de l'application XEFIBank. Il gère l'authentification des utilisateurs, les retraits, l'affichage de l'historique des transactions et les interactions avec les comptes.
 
-2. Une fois l'authentification réussie, l'utilisateur peut choisir parmi plusieurs options :
+2. **Base de données SQLite (xefibank.db)**
+   Le fichier xefibank.db est une base de données SQLite qui stocke les données des utilisateurs, telles que les noms d'utilisateur, les codes PIN, les soldes, les limites de retrait journalier et l'historique des transactions. La base de données comprend deux tables : users et transactions.
 
-   - Pour effectuer un retrait (dans la limite de 200€ par jour), l'option "1" permet à l'utilisateur de spécifier le montant à retirer ainsi que le choix entre le moins de billets possible (option "1") ou le plus de billets possible (option "2").
+3. **API Flask**
+   L'API Flask fournit des points de terminaison pour l'authentification des utilisateurs et les retraits. Elle permet à des applications ou services externes d'interagir avec le système XEFIBank. L'API dispose de deux points de terminaison principaux : /login pour l'authentification et /withdraw pour les retraits.
 
-   - L'option "2" permet d'afficher un reçu contenant les détails des 5 dernières transactions. Si aucune transaction n'a été effectuée, un message indique que l'historique est vide.
+## Comment exécuter l'application XEFIBank
 
-   - Enfin, l'option "3" permet de quitter le programme.
+**Configuration de l'environnement :**
 
-3. Lorsqu'un utilisateur souhaite effectuer un retrait, le programme vérifie d'abord si le montant total retiré au cours de la journée n'excède pas 200€. Si c'est le cas, l'utilisateur est invité à indiquer le montant souhaité et à choisir entre le moins de billets possible ou le plus de billets possible. Le montant est ensuite déduit du solde du compte.
+- Assurez-vous d'avoir Python installé sur votre système.
+- Installez les packages Python requis en exécutant la commande suivante : `pip install Flask dateutil`.
 
-4. L'historique des transactions est conservé, et les 5 dernières transactions sont affichées si l'utilisateur le souhaite.
+**Exécution de l'API Flask :**
 
-5. Notez que l'utilisateur est autorisé à effectuer un maximum de 5 retraits par jour. Une fois ce nombre atteint, il ne pourra plus effectuer de retraits jusqu'au jour suivant.
+1. Ouvrez un terminal ou une invite de commande.
+2. Naviguez jusqu'au répertoire contenant votre script d'API Flask (celui que vous avez fourni).
+3. Lancez l'API Flask en exécutant le script à l'aide de la commande suivante :
 
-## Gestion des Erreurs
 
-Ce programme a été amélioré pour gérer les erreurs d'entrée utilisateur de manière plus robuste. Par exemple :
+**Exécution de main.py :**
 
-- Si l'utilisateur entre un montant de retrait invalide (supérieur à 200€), le programme le guidera pour entrer une valeur valide.
+1. Ouvrez un autre terminal ou une invite de commande.
+2. Naviguez jusqu'au répertoire contenant main.py.
+3. Exécutez le script en utilisant la commande suivante :
 
-- Si l'utilisateur choisit une option invalide, il sera invité à réessayer jusqu'à ce qu'une option valide soit choisie.
+4. Suivez les invites pour interagir avec l'application XEFIBank.
 
-- Si l'utilisateur entre un nom d'utilisateur ou un code PIN incorrect à trois reprises, le compte sera bloqué, empêchant ainsi toute connexion ultérieure.
+## Fonctionnalités de XEFIBank
 
----
+L'application XEFIBank offre les fonctionnalités suivantes :
 
-C'est ainsi que fonctionne ce gestionnaire de compte bancaire simple en Python. Il peut être utilisé pour simuler des opérations bancaires de base.
+- **Authentification des utilisateurs** : Les utilisateurs sont invités à saisir leur nom d'utilisateur et leur code PIN pour s'authentifier. Après trois tentatives infructueuses, le compte est temporairement bloqué.
+
+- **Retraits** : Les utilisateurs peuvent effectuer des retraits, sous réserve de certaines règles. Ils ne peuvent retirer qu'un montant maximum par jour et effectuer un nombre limité de retraits par jour. Le programme calcule la manière la plus efficace de distribuer les billets pour le montant demandé.
+
+- **Historique des transactions** : Les utilisateurs peuvent consulter les cinq dernières transactions effectuées.
+
+- **API Flask** : Des applications ou services externes peuvent utiliser l'API Flask pour authentifier les utilisateurs et effectuer des retraits de manière programmatique.
+
+## Notes importantes
+
+- **Blocage du compte** : Après trois tentatives infructueuses d'authentification, le compte est bloqué temporairement.
+
+- **Limites de retrait** : Les utilisateurs ne peuvent retirer qu'un montant limité par jour et effectuer un nombre limité de retraits.
+
+- **Distribution des billets** : Le programme calcule la manière la plus efficace de distribuer les billets lorsque les utilisateurs effectuent un retrait, en tenant compte des dénominations de billets disponibles.
